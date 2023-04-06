@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-// #include <unistd.h>
+#include <unistd.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
@@ -8,6 +9,7 @@
 
 #define SIZE 1024
 
+/*
 char* my_itoa(int value, int base) {
     char* result;
 
@@ -48,6 +50,20 @@ char* my_itoa(int value, int base) {
 
     return result;
 }
+*/
+char* itoa(int val, int base){
+	
+	static char buf[32] = {0};
+	
+	int i = 30;
+	
+	for(; val && i ; --i, val /= base)
+	
+		buf[i] = "0123456789abcdef"[val % base];
+	
+	return &buf[i+1];
+	
+}
 
 void makeRequest(int argc, char **argv) {
     int client_server_fifo = open("client_server_fifo", O_WRONLY | O_TRUNC, 0666);
@@ -59,25 +75,26 @@ void makeRequest(int argc, char **argv) {
     if (mkfifo("server_client_fifo", 0666) == -1) {
         if (errno != EEXIST) {
             perror("Could not create server_client_fifo\n");
-            return 1;
+            _exit(1);
         }
     }
 
     int pid = getpid();
-    char* pidClient = my_itoa(pid, 10);
+    char* pidClient = itoa(pid, 10);
     char buffer[SIZE];
+    argv++;
 
     for (int i = 1; i < argc; i++) {
         strcat(buffer, *argv);
-        srtcat(buffer, " ");
+        strcat(buffer, " ");
         argv++;
     }
 
     strcat(buffer, "");
     strcat(buffer, pidClient);
 
-    print("CLIENT | vou escrever para o server");
-    if (write(client_server_fifo, buffer, sifeof(buffer)) == -1) {
+    printf("CLIENT | vou escrever para o server");
+    if (write(client_server_fifo, buffer, sizeof(buffer)) == -1) {
         perror("Error writing to server");
     }
     close(client_server_fifo);
@@ -102,15 +119,15 @@ void makeRequest(int argc, char **argv) {
     _exit(0);
 }
 
-int main(int agrc, char **argv) {
-    if (mkfifo("client_server_fifo", 0777) == -1) {
+int main(int argc, char **argv) {
+    if (mkfifo("client_server_fifo", 0666) == -1) {
         if (errno != EEXIST) {
             perror("Could not create client_server_fifo\n");
-            return 1;
+            _exit(1);
         }
     }
 
-    makeRequest(agrc, argv);
+    makeRequest(argc, argv);
 
     return 0;
 }

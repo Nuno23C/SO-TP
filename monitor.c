@@ -50,88 +50,65 @@ char* my_itoa(int value, int base) {
     return result;
 }
 */
-char* itoa(int val, int base){
-	
+
+char* itoa(int val, int base) {
+
 	static char buf[32] = {0};
-	
+
 	int i = 30;
-	
+
 	for(; val && i ; --i, val /= base)
-	
+
 		buf[i] = "0123456789abcdef"[val % base];
-	
+
 	return &buf[i+1];
-	
 }
 
 
-void receiveRequest(int argc, char **argv){
-    char buffer1[SIZE]; //armezar informação
-    char fifoName1[1024] = "server_client_fifo";
-
-    int server_client = open(fifoName1, O_WRONLY, 0666);
-    if((server_client = open(fifoName1, O_WRONLY, 0666)) == -1){
-		perror("Could not open the fifo\n");
-		_exit(1);
-	}
-
-    // Cria o pipe 
-    if(mkfifo(fifoName1, 0666) == -1){
+void receiveRequest() {
+    if(mkfifo("client_server_fifo", 0666) == -1){
         if(errno != EEXIST){
-            perror("Could not create fifo file\n");
+            perror("Could not create client_server_fifo\n");
             _exit(1);
         }
     }
 
-    int pid = getpid();
-    char* pidServer = itoa(pid, 10);
-    argv++;
-
-    for (int i = 1; i < argc; i++) {
-        strcat(buffer1, *argv);
-        strcat(buffer1, " ");
-        argv++;
-    }
-
-    strcat(buffer1, "");
-    strcat(buffer1, pidServer);
-
-
-    printf("SERVER | vou escrever para o cliente");
-    if (write(server_client, buffer1, sizeof(buffer1)) == -1) {
-        perror("Error writing to server");
-    }
-
-    // Fecha o pipe nomeado
-    close(server_client);
-
-
-    int bytes_read = 0;
-    char buffer2[SIZE];
-    char fifoName2[1024] = "client_server_fifo";
-
-    int client_server = open(fifoName2, O_RDONLY, 0666);
-    if((client_server = open(fifoName2, O_RDONLY, 0666)) == -1){
+    int client_server = open("client_server_fifo", O_RDONLY, 0666);
+    if (client_server == -1){
 		perror("Could not open the fifo\n");
 		_exit(1);
 	}
 
-    while((bytes_read = read(client_server, buffer2, SIZE)) > 0){
-		write(1, buffer2, bytes_read);
-	}
+    char string[SIZE];
+    int bytesRead = 0;
+    if ((bytesRead = read(client_server, string, SIZE)) == -1) {
+        perror("Error reading from server");
+    }
+    printf("Recebi a string: %s\n", string);
+    printf("bytesRead = %d\n", bytesRead);
+
+    while (bytesRead > 0) {
+        write(1, string, bytesRead);
+    }
 
     close(client_server);
+
+    int server_client = open("server_client_fifo", O_WRONLY, 0666);
+    if(server_client == -1){
+		perror("Could not open the fifo\n");
+		_exit(1);
+	}
 }
 
 int main(int argc, char **argv){
-        if (mkfifo("server_client_fifo", 0666) == -1) {
+    if (mkfifo("server_client_fifo", 0666) == -1) {
         if (errno != EEXIST) {
             perror("Could not create server_client_fifo\n");
             _exit(1);
         }
     }
 
-    receiveRequest(argc, argv);
+    receiveRequest();
 
     return 0;
 }

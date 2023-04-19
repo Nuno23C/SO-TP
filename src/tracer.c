@@ -26,11 +26,13 @@ char* itoa(int val, int base){
 	return &buf[i+1];
 }
 
-void sendInitialStatus(int fifo) {
+void sendStatus(int fifo, char* program_name) {
     Status status;
 
     int pid = getpid();
     status.process_pid = pid;
+
+    status.program_name = program_name;
 
     struct timeval current_time;
     gettimeofday(&current_time, NULL);
@@ -38,27 +40,29 @@ void sendInitialStatus(int fifo) {
 
     write(fifo, &status, sizeof(Status));
 
-    _exit(0);
-}
-
-void receiveStatus() {
-    int server_client = open("server_client_fifo", O_RDONLY, 0666);
-    if (server_client == -1) {
-        perror("Error opening server_client_fifo\n");
-        _exit(1);
-    }
-
-    char buffer[SIZE];
-    int bytesRead;
-
-    while (bytesRead = read(server_client, buffer, SIZE) > 0) {
-        write(1, buffer, bytesRead);
-    }
-
-    close(server_client);
+    free(status.program_name);
 
     _exit(0);
 }
+
+// void receiveStatus() {
+//     int server_client = open("server_client_fifo", O_RDONLY, 0666);
+//     if (server_client == -1) {
+//         perror("Error opening server_client_fifo\n");
+//         _exit(1);
+//     }
+
+//     char buffer[SIZE];
+//     int bytesRead;
+
+//     while (bytesRead = read(server_client, buffer, SIZE) > 0) {
+//         write(1, buffer, bytesRead);
+//     }
+
+//     close(server_client);
+
+//     _exit(0);
+// }
 
 Program parser(int argc, char** argv) {
     char* token = strtok(argv[3], " ");
@@ -88,6 +92,9 @@ Program parser(int argc, char** argv) {
 }
 
 int main(int argc, char **argv) {
+    // int pid = getpid();
+    // mudar nome do fifo ???
+
     if (mkfifo("client_server_fifo", 0666) == -1) {
         if (errno != EEXIST) {
             perror("Could not create client_server_fifo\n");
@@ -102,19 +109,17 @@ int main(int argc, char **argv) {
                 return 0;
             }
 
-            // int client_server = open("client_server_fifo", O_WRONLY, 0666);
-            // if (client_server == -1) {
-            //     perror("Error opening client_server_fifo\n");
-            //     _exit(1);
-            // }
+            int client_server = open("client_server_fifo", O_WRONLY, 0666);
+            if (client_server == -1) {
+                perror("Error opening client_server_fifo\n");
+                _exit(1);
+            }
 
             if (strcmp(argv[2], "-u") == 0) {
                 Program program = parser(argc, argv);
                 printf("Running PID %d\n", program.process_pid);
-                // sendStatus(client_server);
+                sendStatus(client_server, program.program_name);
                 execvp(program.program_name, program.argv);
-                printf("here\n");
-
 
                 // printf("program_name: %s\n", program.program_name);
                 // printf("argc: %d\n", program.argc);
@@ -122,17 +127,19 @@ int main(int argc, char **argv) {
                 // for (int i = 0; i < program.argc; i++) {
                 //     printf("%s ", program.argv[i]);
                 // }
+
             } else if (strcmp(argv[2], "-p") == 0) {
                 // for ...
             }
 
-            // close(client_server);
+            close(client_server);
 
         } else if (strcmp(argv[1], "status") == 0) {
             if (argc != 2) {
                 perror("Insufficient arguments\n");
                 return 0;
             }
+            
 
         }
 

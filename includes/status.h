@@ -4,3 +4,4 @@ typedef struct Status {
     long timestampI;
     long timestampF;
 } Status;
+

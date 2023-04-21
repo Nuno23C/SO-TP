@@ -28,7 +28,7 @@ int main(int argc, char **argv){
 
     printf("process_pid: %d\n", status.process_pid);
     printf("timestampI: %ld\n", status.timestampI);
-    // printf("program_name: %s\n", status.program_name);
+    printf("program_name: %s\n", status.program_name);
 
 
     close(client_server);

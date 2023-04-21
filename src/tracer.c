@@ -34,13 +34,15 @@ void sendStatus(int fifo, char* program_name) {
 
     status.program_name = program_name;
 
+    printf("%s\n", status.program_name);
+
     struct timeval current_time;
     gettimeofday(&current_time, NULL);
     status.timestampI = current_time.tv_sec;
 
     write(fifo, &status, sizeof(Status));
 
-    free(status.program_name);
+    // free(status.program_name);
 
     _exit(0);
 }
@@ -82,11 +84,16 @@ Program parser(int argc, char** argv) {
 
     program.program_name = tokens[0];
 
-    program.argc = argc - 1;
+    program.argc = num_tokens - 1;
 
-    for (int i = 1; i < num_tokens; i++) {
-        strcpy(program.argv[i - 1], tokens[i]);
+    program.argv = (char**)malloc(sizeof(char*) * (program.argc+1));
+    int i;
+    for(i = 1; i < num_tokens; i++){
+        program.argv[i - 1] = tokens[i];
     }
+    program.argv[i]=NULL;
+
+    free(tokens);
 
     return program;
 }
@@ -116,13 +123,13 @@ int main(int argc, char **argv) {
             }
 
             if (strcmp(argv[2], "-u") == 0) {
+                // printf("here");
                 Program program = parser(argc, argv);
-                printf("Running PID %d\n", program.process_pid);
+                printf("Running PID %d\n", program.process_pid); //mudar para write
                 sendStatus(client_server, program.program_name);
-                execvp(program.program_name, program.argv);
 
-                // printf("program_name: %s\n", program.program_name);
                 // printf("argc: %d\n", program.argc);
+                // printf("program_name: %s\n", program.program_name);
                 // printf("argv: ");
                 // for (int i = 0; i < program.argc; i++) {
                 //     printf("%s ", program.argv[i]);
@@ -139,7 +146,16 @@ int main(int argc, char **argv) {
                 perror("Insufficient arguments\n");
                 return 0;
             }
-            
+
+            int client_server = open("client_server_fifo", O_WRONLY, 0666);
+            if (client_server == -1) {
+                perror("Error opening client_server_fifo\n");
+                _exit(1);
+            }
+
+            Program program = parser(argc, argv);
+            sendStatus(client_server, program.program_name);
+
 
         }
 

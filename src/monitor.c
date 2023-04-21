@@ -28,8 +28,15 @@ int main(int argc, char **argv){
 
     printf("process_pid: %d\n", status.process_pid);
     printf("timestampI: %ld\n", status.timestampI);
-    printf("program_name: %s\n", status.program_name);
 
+    status.program_name = (char*)malloc(status.program_name_len);
+
+    if(read(client_server, status.program_name, sizeof(status.program_name)) == -1) {
+        perror("Error reading from tracer\n");
+        _exit(1);
+    }
+
+    printf("program_name: %s\n", status.program_name);
 
     close(client_server);
 

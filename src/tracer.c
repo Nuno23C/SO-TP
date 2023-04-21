@@ -32,39 +32,18 @@ void sendStatus(int fifo, char* program_name) {
     int pid = getpid();
     status.process_pid = pid;
 
-    status.program_name = program_name;
-
-    printf("%s\n", status.program_name);
-
     struct timeval current_time;
     gettimeofday(&current_time, NULL);
     status.timestampI = current_time.tv_sec;
 
+    status.program_name_len = strlen(program_name);
+
     write(fifo, &status, sizeof(Status));
 
-    // free(status.program_name);
+    write(fifo, program_name, status.program_name_len);
 
-    _exit(0);
+    // _exit(0);
 }
-
-// void receiveStatus() {
-//     int server_client = open("server_client_fifo", O_RDONLY, 0666);
-//     if (server_client == -1) {
-//         perror("Error opening server_client_fifo\n");
-//         _exit(1);
-//     }
-
-//     char buffer[SIZE];
-//     int bytesRead;
-
-//     while (bytesRead = read(server_client, buffer, SIZE) > 0) {
-//         write(1, buffer, bytesRead);
-//     }
-
-//     close(server_client);
-
-//     _exit(0);
-// }
 
 Program parser(int argc, char** argv) {
     char* token = strtok(argv[3], " ");
@@ -123,10 +102,11 @@ int main(int argc, char **argv) {
             }
 
             if (strcmp(argv[2], "-u") == 0) {
-                // printf("here");
                 Program program = parser(argc, argv);
                 printf("Running PID %d\n", program.process_pid); //mudar para write
                 sendStatus(client_server, program.program_name);
+                printf("here");
+                // execvp(program.program_name, program.argv);
 
                 // printf("argc: %d\n", program.argc);
                 // printf("program_name: %s\n", program.program_name);

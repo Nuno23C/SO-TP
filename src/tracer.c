@@ -8,7 +8,6 @@
 #include <errno.h>
 #include <sys/time.h>
 
-#include "../includes/status.h"
 #include "../includes/program.h"
 
 #define SIZE 1024
@@ -26,25 +25,6 @@ char* itoa(int val, int base){
 	return &buf[i+1];
 }
 
-void sendStatus(int fifo, char* program_name) {
-    Status status;
-
-    int pid = getpid();
-    status.process_pid = pid;
-
-    struct timeval current_time;
-    gettimeofday(&current_time, NULL);
-    status.timestampI = current_time.tv_sec;
-
-    status.program_name_len = strlen(program_name);
-
-    write(fifo, &status, sizeof(Status));
-
-    write(fifo, program_name, status.program_name_len);
-
-    // _exit(0);
-}
-
 Program parser(int argc, char** argv) {
     char* token = strtok(argv[3], " ");
     char** tokens = NULL;
@@ -57,9 +37,6 @@ Program parser(int argc, char** argv) {
     }
 
     Program program;
-
-    int pid = getpid();
-    program.process_pid = pid;
 
     program.program_name = tokens[0];
 
@@ -76,6 +53,76 @@ Program parser(int argc, char** argv) {
 
     return program;
 }
+
+
+void sendInitialStatus(int pid, char* program_name) {
+    int client_server = open("client_server_fifo", O_WRONLY, 0666);
+    if (client_server == -1) {
+        perror("Error opening client_server_fifo\n");
+        _exit(1);
+    }
+
+    int flag = 1;
+    if (write(client_server, &flag, sizeof(flag)) == -1) {
+        perror("Error send flag");
+        _exit(1);
+    }
+
+    if (write(client_server, &pid, sizeof(pid)) == -1) {
+        perror("Error sending pid\n");
+        _exit(1);
+    }
+
+    int len = strlen(program_name);
+
+    if (write(client_server, &len, sizeof(len)) == -1) {
+        perror("Error sending program name len\n");
+        _exit(1);
+    }
+
+    if (write(client_server, program_name, strlen(program_name)) == -1) {
+        perror("Error sending program name\n");
+        _exit(1);
+    }
+
+    struct timeval current_time;
+    gettimeofday(&current_time, NULL);
+    long timestampI = current_time.tv_sec;
+
+    if (write(client_server, &timestampI, sizeof(timestampI)) == -1) {
+        perror("Error sending initial timestamp\n");
+        _exit(1);
+    }
+}
+
+void sendFinalStatus(int pid) {
+    int client_server = open("client_server_fifo", O_WRONLY, 0666);
+    if (client_server == -1) {
+        perror("Error opening client_server_fifo\n");
+        _exit(1);
+    }
+
+    int flag = 2;
+    if (write(client_server, &flag, sizeof(flag)) == -1) {
+        perror("Error send flag");
+        _exit(1);
+    }
+
+    if (write(client_server, &pid, sizeof(pid)) == -1) {
+        perror("Error sending pid\n");
+        _exit(1);
+    }
+
+    struct timeval current_time;
+    gettimeofday(&current_time, NULL);
+    long timestampF = current_time.tv_sec;
+
+    if (write(client_server, &timestampF, sizeof(timestampF)) == -1) {
+        perror("Error sending final timestamp\n");
+        _exit(1);
+    }
+}
+
 
 int main(int argc, char **argv) {
     // int pid = getpid();
@@ -95,31 +142,50 @@ int main(int argc, char **argv) {
                 return 0;
             }
 
-            int client_server = open("client_server_fifo", O_WRONLY, 0666);
-            if (client_server == -1) {
-                perror("Error opening client_server_fifo\n");
-                _exit(1);
-            }
-
             if (strcmp(argv[2], "-u") == 0) {
+                int status;
                 Program program = parser(argc, argv);
-                printf("Running PID %d\n", program.process_pid); //mudar para write
-                sendStatus(client_server, program.program_name);
-                printf("here");
-                // execvp(program.program_name, program.argv);
 
-                // printf("argc: %d\n", program.argc);
-                // printf("program_name: %s\n", program.program_name);
-                // printf("argv: ");
-                // for (int i = 0; i < program.argc; i++) {
-                //     printf("%s ", program.argv[i]);
-                // }
+                if (fork() == 0) {
+
+                    int pid = getpid();
+                    program.process_pid = pid;
+
+                    sendInitialStatus(program.process_pid, program.program_name);
+
+                    printf("Running PID %d\n", program.process_pid); //mudar para write
+                    // execvp(program.program_name, program.argv);
+
+                    sendFinalStatus(program.process_pid);
+
+                    // int server_client = open("server_client_fifo", O_RDONLY, 0666);
+                    // if (server_client == -1) {
+                    //     perror("Error opening server_client_fifo\n");
+                    //     _exit(1);
+                    // }
+
+                    // int len;
+                    // if (read(server_client, &len, sizeof(len)) == -1) {
+                    //     perror("Error reading length\n");
+                    //     _exit(1);
+                    // }
+
+                    // char* string;
+                    // string = (char*)malloc(len);
+
+                    // if (read(server_client, string, len) == -1) {
+                    //     perror("Error reading string\n");
+                    //     _exit(1);
+                    // }
+                    // printf("received from server: %s\n", string);
+
+                } else {
+
+                }
 
             } else if (strcmp(argv[2], "-p") == 0) {
-                // for ...
-            }
 
-            close(client_server);
+            }
 
         } else if (strcmp(argv[1], "status") == 0) {
             if (argc != 2) {
@@ -132,18 +198,9 @@ int main(int argc, char **argv) {
                 perror("Error opening client_server_fifo\n");
                 _exit(1);
             }
-
-            Program program = parser(argc, argv);
-            sendStatus(client_server, program.program_name);
-
-
         }
 
     }
-
-    // receiveResponse();
-
-    unlink("client_server_fifo");
 
     return 0;
 }

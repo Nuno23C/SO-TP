@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "status.h": "c",
-        "program.h": "c"
+        "program.h": "c",
+        "process.h": "c"
     }
 }

@@ -1,8 +1,8 @@
-typedef struct Status {
+typedef struct Process {
     int process_pid;
     char* program_name;
-    int program_name_len;
     long timestampI;
     long timestampF;
-} Status;
+    int exec_time;
+} Process;
 

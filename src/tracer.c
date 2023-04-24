@@ -4,9 +4,11 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/time.h>
+
 
 #include "../includes/program.h"
 
@@ -64,7 +66,7 @@ void sendInitialStatus(int pid, char* program_name) {
 
     int flag = 1;
     if (write(client_server, &flag, sizeof(flag)) == -1) {
-        perror("Error send flag");
+        perror("Error sending flag\n");
         _exit(1);
     }
 
@@ -104,7 +106,7 @@ void sendFinalStatus(int pid) {
 
     int flag = 2;
     if (write(client_server, &flag, sizeof(flag)) == -1) {
-        perror("Error send flag");
+        perror("Error sending flag\n");
         _exit(1);
     }
 
@@ -146,42 +148,19 @@ int main(int argc, char **argv) {
                 int status;
                 Program program = parser(argc, argv);
 
+                int pid = getpid();
+                program.process_pid = pid;
+
+                sendInitialStatus(program.process_pid, program.program_name);
+
+                printf("Running PID %d\n", program.process_pid); //mudar para write
+
                 if (fork() == 0) {
-
-                    int pid = getpid();
-                    program.process_pid = pid;
-
-                    sendInitialStatus(program.process_pid, program.program_name);
-
-                    printf("Running PID %d\n", program.process_pid); //mudar para write
-                    // execvp(program.program_name, program.argv);
-
-                    sendFinalStatus(program.process_pid);
-
-                    // int server_client = open("server_client_fifo", O_RDONLY, 0666);
-                    // if (server_client == -1) {
-                    //     perror("Error opening server_client_fifo\n");
-                    //     _exit(1);
-                    // }
-
-                    // int len;
-                    // if (read(server_client, &len, sizeof(len)) == -1) {
-                    //     perror("Error reading length\n");
-                    //     _exit(1);
-                    // }
-
-                    // char* string;
-                    // string = (char*)malloc(len);
-
-                    // if (read(server_client, string, len) == -1) {
-                    //     perror("Error reading string\n");
-                    //     _exit(1);
-                    // }
-                    // printf("received from server: %s\n", string);
-
-                } else {
-
+                    execvp(program.program_name, program.argv);
                 }
+                wait(&status);
+
+                sendFinalStatus(program.process_pid);
 
             } else if (strcmp(argv[2], "-p") == 0) {
 
@@ -198,8 +177,61 @@ int main(int argc, char **argv) {
                 perror("Error opening client_server_fifo\n");
                 _exit(1);
             }
-        }
 
+            int flag = 3;
+            if (write(client_server, &flag, sizeof(flag)) == -1) {
+                perror("Error sending flag\n");
+                _exit(1);
+            }
+
+            int pid = getpid();
+	        char* pid_str = itoa(pid, 10);
+
+	        char* fifo;
+            fifo = (char*)malloc(sizeof("server_client_fifo_") + sizeof(pid_str));
+            strcpy(fifo, "server_client_fifo_");
+	        strcat(fifo, pid_str);
+
+	        if (mkfifo(fifo, 0666) == -1) {
+                if (errno != EEXIST) {
+                    perror("Could not create client_server_fifo\n");
+                    _exit(1);
+                }
+            }
+            printf("pid: %d\n", pid);
+
+            if (write(client_server, &pid, sizeof(pid)) == -1) {
+                perror("Error sending pid\n");
+                _exit(1);
+            }
+
+            close(client_server);
+
+            int server_client = open(fifo, O_RDONLY, 0666);
+            if (client_server == -1) {
+                perror("Error opening server_client_fifo\n");
+                _exit(1);
+            }
+
+            int len;
+            if (read(server_client, &len, sizeof(len)) == -1) {
+                perror("Error reading length\n");
+                _exit(1);
+            }
+
+            char* string;
+            string = (char*)malloc(len);
+
+            if (read(server_client, string, len) == -1) {
+                perror("Error reading string\n");
+                _exit(1);
+            }
+            printf("received from server: %s\n", string);
+
+            close(server_client);
+
+            unlink(fifo);
+        }
     }
 
     return 0;

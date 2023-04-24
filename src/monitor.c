@@ -10,6 +10,19 @@
 
 #define SIZE 1024
 
+char* itoa(int val, int base){
+
+	static char buf[32] = {0};
+
+	int i = 30;
+
+	for(; val && i ; --i, val /= base)
+
+		buf[i] = "0123456789abcdef"[val % base];
+
+	return &buf[i+1];
+}
+
 int main(int argc, char **argv){
     int num_processes = 0;
     Process list[SIZE];
@@ -20,13 +33,6 @@ int main(int argc, char **argv){
             _exit(1);
         }
     }
-
-    // if (mkfifo("server_client_fifo", 0666) == -1) {
-    //     if (errno != EEXIST) {
-    //         perror("Could not create client_server_fifo\n");
-    //         _exit(1);
-    //     }
-    // }
 
     while(1) {
 
@@ -75,6 +81,8 @@ int main(int argc, char **argv){
             list[num_processes] = process;
             num_processes += 1;
 
+            close(client_server);
+
         } else if (flag == 2) { // vai receber o fim de um programa
 
             int pid;
@@ -104,35 +112,50 @@ int main(int argc, char **argv){
             printf("timestampF: %ld\n", list[n].timestampF);
             printf("exec_time: %d\n\n", list[n].exec_time);
 
+            close(client_server);
+
+        } else if (flag == 3) {
+
+            int pid;
+            if (read(client_server, &pid, sizeof(pid)) == -1) {
+                perror("Error reading pid\n");
+                _exit(1);
+            }
+            printf("recebi pid: %d\n", pid);
+
+            close(client_server);
+
+	        char* pid_str = itoa(pid, 10);
+	        char* fifo;
+            fifo = (char*)malloc(sizeof("server_client_fifo_") + sizeof(pid_str));
+            strcpy(fifo, "server_client_fifo_");
+	        strcat(fifo, pid_str);
+
+            int server_client = open(fifo, O_WRONLY, 0666);
+            if (server_client == -1) {
+                perror("Error opening server_client_fifo\n");
+                _exit(1);
+            }
+
+            char* string = "teste123";
+            int len = strlen(string);
+
+            if (write(server_client, &len, sizeof(len)) == -1) {
+                perror("Error wtring string length\n");
+                _exit(1);
+            }
+
+            if (write(server_client, string, len) == -1) {
+                perror("Error wtring string\n");
+                _exit(1);
+            }
+
+            close(server_client);
         }
 
-        close(client_server);
-
-        // int server_client = open("server_client_fifo", O_WRONLY, 0666);
-        // if (server_client == -1) {
-        //     perror("Error opening server_client_fifo\n");
-        //     _exit(1);
-        // }
-
-        // char* string = "teste123";
-        // int len = strlen(string);
-
-        // if (write(server_client, &len, sizeof(len)) == -1) {
-        //     perror("Error wtring string length\n");
-        //     _exit(1);
-        // }
-
-        // if (write(server_client, string, len) == -1) {
-        //     perror("Error wtring string\n");
-        //     _exit(1);
-        // }
-
-        // close(server_client);
     }
 
     unlink("client_server_fifo");
-    // unlink("server_client_fifo");
-
 
     return 0;
 }

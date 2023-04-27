@@ -81,8 +81,6 @@ int main(int argc, char **argv){
             list[num_processes] = process;
             num_processes += 1;
 
-            close(client_server);
-
         } else if (flag == 2) { // vai receber o fim de um programa
 
             int pid;
@@ -108,11 +106,9 @@ int main(int argc, char **argv){
             printf("list_indice: %d\n", n);
             printf("process_pid: %d\n", list[n].process_pid);
             printf("program_name: %s\n", list[n].program_name);
-            printf("timestampI: %ld\n", list[n].timestampI);
-            printf("timestampF: %ld\n", list[n].timestampF);
+            // printf("timestampI: %ld\n", list[n].timestampI);
+            // printf("timestampF: %ld\n", list[n].timestampF);
             printf("exec_time: %d\n\n", list[n].exec_time);
-
-            close(client_server);
 
         } else if (flag == 3) {
 
@@ -121,7 +117,6 @@ int main(int argc, char **argv){
                 perror("Error reading pid\n");
                 _exit(1);
             }
-            printf("recebi pid: %d\n", pid);
 
             close(client_server);
 
@@ -152,6 +147,8 @@ int main(int argc, char **argv){
 
             close(server_client);
         }
+
+        close(client_server);
 
     }
 

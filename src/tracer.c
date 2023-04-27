@@ -9,10 +9,8 @@
 #include <errno.h>
 #include <sys/time.h>
 
-
 #include "../includes/program.h"
 
-#define SIZE 1024
 
 char* itoa(int val, int base){
 
@@ -26,6 +24,7 @@ char* itoa(int val, int base){
 
 	return &buf[i+1];
 }
+
 
 Program parser(int argc, char** argv) {
     char* token = strtok(argv[3], " ");
@@ -42,14 +41,15 @@ Program parser(int argc, char** argv) {
 
     program.program_name = tokens[0];
 
-    program.argc = num_tokens - 1;
+    program.argc = num_tokens;
 
-    program.argv = (char**)malloc(sizeof(char*) * (program.argc+1));
-    int i;
-    for(i = 1; i < num_tokens; i++){
-        program.argv[i - 1] = tokens[i];
+    program.argv = (char**)malloc(sizeof(char*) * (program.argc + 1));
+
+    for(int i = 0; i < num_tokens; i++){
+        program.argv[i] = tokens[i];
     }
-    program.argv[i]=NULL;
+
+    program.argv[program.argc] = NULL;
 
     free(tokens);
 
@@ -57,7 +57,7 @@ Program parser(int argc, char** argv) {
 }
 
 
-void sendInitialStatus(int pid, char* program_name) {
+long sendInitialStatus(int pid, char* program_name) {
     int client_server = open("client_server_fifo", O_WRONLY, 0666);
     if (client_server == -1) {
         perror("Error opening client_server_fifo\n");
@@ -89,15 +89,18 @@ void sendInitialStatus(int pid, char* program_name) {
 
     struct timeval current_time;
     gettimeofday(&current_time, NULL);
-    long timestampI = current_time.tv_sec;
+    long timestampI = current_time.tv_sec * 1000 + current_time.tv_usec / 1000; // milisegundos
 
     if (write(client_server, &timestampI, sizeof(timestampI)) == -1) {
         perror("Error sending initial timestamp\n");
         _exit(1);
     }
+
+    return timestampI;
 }
 
-void sendFinalStatus(int pid) {
+
+long sendFinalStatus(int pid) {
     int client_server = open("client_server_fifo", O_WRONLY, 0666);
     if (client_server == -1) {
         perror("Error opening client_server_fifo\n");
@@ -117,18 +120,18 @@ void sendFinalStatus(int pid) {
 
     struct timeval current_time;
     gettimeofday(&current_time, NULL);
-    long timestampF = current_time.tv_sec;
+    long timestampF = current_time.tv_sec * 1000 + current_time.tv_usec / 1000; // milisegundos
 
     if (write(client_server, &timestampF, sizeof(timestampF)) == -1) {
         perror("Error sending final timestamp\n");
         _exit(1);
     }
+
+    return timestampF;
 }
 
 
 int main(int argc, char **argv) {
-    // int pid = getpid();
-    // mudar nome do fifo ???
 
     if (mkfifo("client_server_fifo", 0666) == -1) {
         if (errno != EEXIST) {
@@ -150,17 +153,30 @@ int main(int argc, char **argv) {
 
                 int pid = getpid();
                 program.process_pid = pid;
+                char* pid_str = itoa(pid, 10);
 
-                sendInitialStatus(program.process_pid, program.program_name);
+                long timestampI = sendInitialStatus(program.process_pid, program.program_name);
 
-                printf("Running PID %d\n", program.process_pid); //mudar para write
+                char* msg1 = (char*)malloc(sizeof("Running PID ") + sizeof(pid_str));
+                strcpy(msg1, "Running PID ");
+                strcat(msg1, pid_str);
+                write(1, msg1, strlen(msg1));
 
                 if (fork() == 0) {
                     execvp(program.program_name, program.argv);
                 }
                 wait(&status);
 
-                sendFinalStatus(program.process_pid);
+                long timestampF = sendFinalStatus(program.process_pid);
+
+                int exec_time = timestampF - timestampI;
+                char* exec_time_str = itoa(exec_time, 10);
+
+                char* msg2 = (char*)malloc(sizeof("Ended in ") + sizeof(exec_time_str) + sizeof(" ms\n"));
+                strcpy(msg2, "Ended in ");
+                strcat(msg2, exec_time_str);
+                strcat(msg2, " ms\n");
+                write(1, msg2, strlen(msg2));
 
             } else if (strcmp(argv[2], "-p") == 0) {
 
@@ -198,7 +214,6 @@ int main(int argc, char **argv) {
                     _exit(1);
                 }
             }
-            printf("pid: %d\n", pid);
 
             if (write(client_server, &pid, sizeof(pid)) == -1) {
                 perror("Error sending pid\n");

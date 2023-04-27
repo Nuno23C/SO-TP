@@ -10,6 +10,9 @@
 
 #define SIZE 1024
 
+Process list[SIZE];
+int num_processes = 0;
+
 char* itoa(int val, int base){
 
 	static char buf[32] = {0};
@@ -23,9 +26,9 @@ char* itoa(int val, int base){
 	return &buf[i+1];
 }
 
+
+
 int main(int argc, char **argv){
-    int num_processes = 0;
-    Process list[SIZE];
 
     if (mkfifo("client_server_fifo", 0666) == -1) {
         if (errno != EEXIST) {
@@ -49,6 +52,11 @@ int main(int argc, char **argv){
             perror("Error reading flag");
             _exit(1);
         }
+
+        // switch(flag) {
+        //     case 1:
+        //         receiveNewProcess();
+        // }
 
         if (flag == 1) { // Vai receber um novo programa
 
@@ -132,18 +140,60 @@ int main(int argc, char **argv){
                 _exit(1);
             }
 
-            char* string = "teste123";
-            int len = strlen(string);
-
-            if (write(server_client, &len, sizeof(len)) == -1) {
-                perror("Error wtring string length\n");
+            if (write(server_client, &num_processes, sizeof(num_processes)) == -1) {
+                perror("Error writing num_processes\n");
                 _exit(1);
             }
 
-            if (write(server_client, string, len) == -1) {
-                perror("Error wtring string\n");
-                _exit(1);
+            // printf("num_processes: %d\n", num_processes);
+            // for (int i = 0; i < num_processes; i++) {
+            //     printf("i: %d\n", i);
+            //     printf("pid: %d\n", list[i].process_pid);
+            //     printf("prog_name: %s\n", list[i].program_name);
+            //     printf("exec_time: %d\n", list[i].exec_time);
+            // }
+
+            char* buffer; // PID prog_name exec_time
+            for (int i = 0; i < num_processes; i++) {
+                buffer = NULL;
+                int pid = list[i].process_pid;
+                printf("pid: %d\n", pid);
+                char* pid_str = itoa(pid, 10);
+                printf("pid_str: %s\n", pid_str);
+
+                int exec_time = list[i].exec_time;
+                // printf("exec_time: %d\n", exec_time);
+                char* exec_time_str = itoa(exec_time, 10);
+                // printf("exec_time_str: %s\n", exec_time_str);
+
+                buffer = (char*)malloc(sizeof(pid_str) + sizeof(" ") + sizeof(list[i].program_name) + sizeof(" ") + sizeof(exec_time_str) + sizeof(" ms\n"));
+                printf("1 - %s\n", buffer);
+
+                strcpy(buffer, pid_str);
+                printf("2- %s\n", buffer);
+                strcat(buffer, " ");
+                strcat(buffer, list[i].program_name);
+                printf("3 - %s\n", buffer);
+                strcat(buffer, " ");
+                strcat(buffer, exec_time_str);
+                printf("4 - %s\n", buffer);
+                strcat(buffer, " ms");
+
+                int len = strlen(buffer);
+
+                printf("Vai enviar: %s\n", buffer);
+
+                if (write(server_client, &len, sizeof(len)) == -1) {
+                    perror("Error writing string length\n");
+                    _exit(1);
+                }
+
+                if (write(server_client, buffer, len) == -1) {
+                    perror("Error writing string\n");
+                    _exit(1);
+                }
             }
+
 
             close(server_client);
         }

@@ -151,32 +151,68 @@ int main(int argc, char **argv) {
                 int status;
                 Program program = parser(argc, argv);
 
-                int pid = getpid();
-                program.process_pid = pid;
-                char* pid_str = itoa(pid, 10);
-
-                long timestampI = sendInitialStatus(program.process_pid, program.program_name);
-
-                char* msg1 = (char*)malloc(sizeof("Running PID ") + sizeof(pid_str));
-                strcpy(msg1, "Running PID ");
-                strcat(msg1, pid_str);
-                write(1, msg1, strlen(msg1));
+                int fd[2];
+                if (pipe(fd) == -1) {
+                    perror("Error creating pipe\n");
+                    _exit(1);
+                }
 
                 if (fork() == 0) {
+
+                    close(fd[0]);
+
+                    int pid = getpid();
+                    if (write(fd[1], &pid, sizeof(pid)) == -1) {
+                        perror("FILHO | Error sending pid\n");
+                        _exit(1);
+                    }
+
+                    close(fd[1]);
+
+                    // printf("FILHO | pid: %d\n", pid);
+                    // printf("FILHO | ppid: %d\n", getppid());
+
                     execvp(program.program_name, program.argv);
+
+                } else {
+
+                    close(fd[1]);
+
+                    int pid;
+                    if (read(fd[0], &pid, sizeof(pid)) == -1) {
+                        perror("PAI | Error reading pid\n");
+                        _exit(1);
+                    }
+
+                    close(fd[0]);
+
+                    // printf("PAI | pid: %d\n", getpid());
+                    // printf("PAI | pid recebido: %d\n", pid);
+
+                    program.process_pid = pid;
+                    char* pid_str = itoa(pid, 10);
+
+                    long timestampI = sendInitialStatus(program.process_pid, program.program_name);
+
+                    char* msg1 = (char*)malloc(sizeof("Running PID ") + sizeof(pid_str) + sizeof("\n"));
+                    strcpy(msg1, "Running PID ");
+                    strcat(msg1, pid_str);
+                    strcat(msg1, "\n");
+                    write(1, msg1, strlen(msg1));
+
+                    wait(&status);
+
+                    long timestampF = sendFinalStatus(program.process_pid);
+
+                    int exec_time = timestampF - timestampI;
+                    char* exec_time_str = itoa(exec_time, 10);
+
+                    char* msg2 = (char*)malloc(sizeof("Ended in ") + sizeof(exec_time_str) + sizeof(" ms\n"));
+                    strcpy(msg2, "Ended in ");
+                    strcat(msg2, exec_time_str);
+                    strcat(msg2, " ms\n");
+                    write(1, msg2, strlen(msg2));
                 }
-                wait(&status);
-
-                long timestampF = sendFinalStatus(program.process_pid);
-
-                int exec_time = timestampF - timestampI;
-                char* exec_time_str = itoa(exec_time, 10);
-
-                char* msg2 = (char*)malloc(sizeof("Ended in ") + sizeof(exec_time_str) + sizeof(" ms\n"));
-                strcpy(msg2, "Ended in ");
-                strcat(msg2, exec_time_str);
-                strcat(msg2, " ms\n");
-                write(1, msg2, strlen(msg2));
 
             } else if (strcmp(argv[2], "-p") == 0) {
 
@@ -228,20 +264,29 @@ int main(int argc, char **argv) {
                 _exit(1);
             }
 
-            int len;
-            if (read(server_client, &len, sizeof(len)) == -1) {
-                perror("Error reading length\n");
+            int num_processes;
+            if (read(server_client, &num_processes, sizeof(num_processes)) == -1) {
+                perror("Error reading num_processes\n");
                 _exit(1);
             }
 
             char* string;
-            string = (char*)malloc(len);
+            for (int i = 0; i < num_processes; i++) {
+                int len;
+                if (read(server_client, &len, sizeof(len)) == -1) {
+                    perror("Error reading length\n");
+                    _exit(1);
+                }
 
-            if (read(server_client, string, len) == -1) {
-                perror("Error reading string\n");
-                _exit(1);
+                string = (char*)malloc(sizeof(char*) * len);
+
+                if (read(server_client, string, len) == -1) {
+                    perror("Error reading string\n");
+                    _exit(1);
+                }
+
+                printf("%s\n", string);
             }
-            printf("received from server: %s\n", string);
 
             close(server_client);
 

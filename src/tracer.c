@@ -12,19 +12,39 @@
 #include "../includes/program.h"
 
 
-char* itoa(int val, int base){
+int numNums(int num) {
+    int numNums = 1;
 
-	static char buf[32] = {0};
+    while(num/10 != 0){
+        numNums++;
+        num /= 10;
+    }
 
-	int i = 30;
-
-	for(; val && i ; --i, val /= base)
-
-		buf[i] = "0123456789abcdef"[val % base];
-
-	return &buf[i+1];
+    return numNums;
 }
 
+void reverse(char* str) {
+    int i, j;
+    char c;
+
+    for (i = 0, j = strlen(str)-1; i<j; i++, j--) {
+        c = str[i];
+        str[i] = str[j];
+        str[j] = c;
+    }
+}
+
+void itoa(int n, char* str){
+    int i = 0;
+
+    do {
+        str[i++] = n % 10 + '0';
+    } while ((n /= 10) > 0);
+
+    str[i] = '\0';
+
+    reverse(str);
+}
 
 Program parser(int argc, char** argv) {
     char* token = strtok(argv[3], " ");
@@ -169,9 +189,6 @@ int main(int argc, char **argv) {
 
                     close(fd[1]);
 
-                    // printf("FILHO | pid: %d\n", pid);
-                    // printf("FILHO | ppid: %d\n", getppid());
-
                     execvp(program.program_name, program.argv);
 
                 } else {
@@ -186,11 +203,9 @@ int main(int argc, char **argv) {
 
                     close(fd[0]);
 
-                    // printf("PAI | pid: %d\n", getpid());
-                    // printf("PAI | pid recebido: %d\n", pid);
-
                     program.process_pid = pid;
-                    char* pid_str = itoa(pid, 10);
+                    char* pid_str = (char*)malloc(sizeof(char) * numNums(pid));
+                    itoa(pid, pid_str);
 
                     long timestampI = sendInitialStatus(program.process_pid, program.program_name);
 
@@ -205,7 +220,8 @@ int main(int argc, char **argv) {
                     long timestampF = sendFinalStatus(program.process_pid);
 
                     int exec_time = timestampF - timestampI;
-                    char* exec_time_str = itoa(exec_time, 10);
+                    char* exec_time_str = (char*)malloc(sizeof(char) * numNums(exec_time));
+                    itoa(exec_time, exec_time_str);
 
                     char* msg2 = (char*)malloc(sizeof("Ended in ") + sizeof(exec_time_str) + sizeof(" ms\n"));
                     strcpy(msg2, "Ended in ");
@@ -237,7 +253,8 @@ int main(int argc, char **argv) {
             }
 
             int pid = getpid();
-	        char* pid_str = itoa(pid, 10);
+            char* pid_str = (char*)malloc(sizeof(char) * numNums(pid));
+            itoa(pid, pid_str);
 
 	        char* fifo;
             fifo = (char*)malloc(sizeof("server_client_fifo_") + sizeof(pid_str));

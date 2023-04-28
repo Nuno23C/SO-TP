@@ -13,20 +13,42 @@
 Process list[SIZE];
 int num_processes = 0;
 
-char* itoa(int val, int base){
+int numNums(int num) {
+    int numNums = 1;
 
-	static char buf[32] = {0};
+    while(num/10 != 0){
+        numNums++;
+        num /= 10;
+    }
 
-	int i = 30;
-
-	for(; val && i ; --i, val /= base)
-
-		buf[i] = "0123456789abcdef"[val % base];
-
-	return &buf[i+1];
+    return numNums;
 }
 
+void reverse(char* str) {
+    int i, j;
+    char c;
 
+    for (i = 0, j = strlen(str)-1; i<j; i++, j--) {
+        c = str[i];
+        str[i] = str[j];
+        str[j] = c;
+    }
+}
+
+void itoa(int n, char* str){
+    int i = 0;
+
+    do {
+        str[i++] = n % 10 + '0';
+    } while ((n /= 10) > 0);
+
+    str[i] = '\0';
+
+    reverse(str);
+}
+
+// void newProcessReceived(int fifo) {
+// }
 
 int main(int argc, char **argv){
 
@@ -55,7 +77,11 @@ int main(int argc, char **argv){
 
         // switch(flag) {
         //     case 1:
-        //         receiveNewProcess();
+        //         newProcessReceived(client_server);
+        //         break;
+
+        //     case 2:
+        //         endOfProcess(client_server, pid);
         // }
 
         if (flag == 1) { // Vai receber um novo programa
@@ -114,8 +140,6 @@ int main(int argc, char **argv){
             printf("list_indice: %d\n", n);
             printf("process_pid: %d\n", list[n].process_pid);
             printf("program_name: %s\n", list[n].program_name);
-            // printf("timestampI: %ld\n", list[n].timestampI);
-            // printf("timestampF: %ld\n", list[n].timestampF);
             printf("exec_time: %d\n\n", list[n].exec_time);
 
         } else if (flag == 3) {
@@ -128,7 +152,7 @@ int main(int argc, char **argv){
 
             close(client_server);
 
-	        char* pid_str = itoa(pid, 10);
+	        char* pid_str = (char*)malloc(sizeof(char) * numNums(pid));
 	        char* fifo;
             fifo = (char*)malloc(sizeof("server_client_fifo_") + sizeof(pid_str));
             strcpy(fifo, "server_client_fifo_");
@@ -145,38 +169,24 @@ int main(int argc, char **argv){
                 _exit(1);
             }
 
-            // printf("num_processes: %d\n", num_processes);
-            // for (int i = 0; i < num_processes; i++) {
-            //     printf("i: %d\n", i);
-            //     printf("pid: %d\n", list[i].process_pid);
-            //     printf("prog_name: %s\n", list[i].program_name);
-            //     printf("exec_time: %d\n", list[i].exec_time);
-            // }
-
-            char* buffer; // PID prog_name exec_time
+            char* buffer;
             for (int i = 0; i < num_processes; i++) {
-                buffer = NULL;
+
                 int pid = list[i].process_pid;
-                printf("pid: %d\n", pid);
-                char* pid_str = itoa(pid, 10);
-                printf("pid_str: %s\n", pid_str);
+                char* pid_str = (char*)malloc(sizeof(char) * numNums(pid));
+                itoa(pid, pid_str);
 
                 int exec_time = list[i].exec_time;
-                // printf("exec_time: %d\n", exec_time);
-                char* exec_time_str = itoa(exec_time, 10);
-                // printf("exec_time_str: %s\n", exec_time_str);
+                char* exec_time_str = (char*)malloc(sizeof(char) * numNums(exec_time));
+                itoa(exec_time, exec_time_str);
 
                 buffer = (char*)malloc(sizeof(pid_str) + sizeof(" ") + sizeof(list[i].program_name) + sizeof(" ") + sizeof(exec_time_str) + sizeof(" ms\n"));
-                printf("1 - %s\n", buffer);
 
                 strcpy(buffer, pid_str);
-                printf("2- %s\n", buffer);
                 strcat(buffer, " ");
                 strcat(buffer, list[i].program_name);
-                printf("3 - %s\n", buffer);
                 strcat(buffer, " ");
                 strcat(buffer, exec_time_str);
-                printf("4 - %s\n", buffer);
                 strcat(buffer, " ms");
 
                 int len = strlen(buffer);
@@ -194,12 +204,10 @@ int main(int argc, char **argv){
                 }
             }
 
-
             close(server_client);
         }
 
         close(client_server);
-
     }
 
     unlink("client_server_fifo");

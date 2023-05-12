@@ -64,20 +64,33 @@ void remove_process_by_pid(int pid) {
     }
 }
 
-int pertence (char* str, char** list, int size) {
-    for (int i = 0; i < size; i++) {
-        if (strcmp(str, list[i]) == 0) {
-            return 1;
+void remove_duplicate_strings(char** prog_names, int size) {
+    int i, j, k;
+
+    // Percorre todas as strings do array
+    for (i = 0; i < size; i++) {
+        // Verifica se a string na posição i já foi verificada
+        if (prog_names[i] != NULL) {
+            // Percorre as strings a partir da posição i + 1
+            for (j = i + 1; j < size; j++) {
+                // Verifica se as strings são iguais
+                if (prog_names[j] != NULL && strcmp(prog_names[i], prog_names[j]) == 0) {
+                    // Remove a string duplicada, movendo todas as strings seguintes uma posição para trás
+                    free(prog_names[j]);
+                    prog_names[j] = NULL;
+                }
+            }
         }
     }
-    return 0;
-}
 
-void adiciona (char* str, char** list, int* size) {
-    if (pertence(str, list, *size)!=0) {
-        list[*size] = strdup(str);
-        (*size)++;
+    // Removendo as posições NULL do array
+    for (i = 0, k = 0; i < size; i++) {
+        if (prog_names[i] != NULL) {
+            prog_names[k++] = prog_names[i];
+        }
     }
+
+    prog_names[k] = NULL; // Definindo o final do novo array
 }
 
 int main(int argc, char **argv){
@@ -396,78 +409,76 @@ int main(int argc, char **argv){
                 _exit(1);
             }
 
-            int pid;
-            for(int i = 0; i < size; i++) {
+            char** prog_names = (char**)malloc(sizeof(char*) * size);
+            for (int i = 0; i < size; i++) {
+                int pid;
                 if(read(client_server, &pid, sizeof(pid)) == -1){
                     perror("Error reading pid\n");
                     _exit(1);
                 }
 
-                printf("pid recebido: %d\n", pid);
+                for (int j = 0; j < num_processes; j++) {
+                    if (list[j].process_pid == pid) {
+                        prog_names[i] = (char*)malloc(sizeof(char) * strlen(list[j].program_name));
+                        strcpy(prog_names[i], list[j].program_name);
+                        break;
+                    }
+                }
+            }
 
+            remove_duplicate_strings(prog_names, size);
 
+            int new_size = 0;
+            char** p = prog_names;
+            while (*p) {
+                new_size++;
+                p++;
+            }
 
-                // if(list[i].process_pid == pid){
-                //     char* nameP = list[i].program_name;
-
-                // }
+            int pid;
+            if (read(client_server, &pid, sizeof(pid)) == -1) {
+                perror("Error reading pid\n");
+                _exit(1);
             }
 
             close(client_server);
 
+	        char* pid_str = (char*)malloc(sizeof(char) * numNums(pid));
+            itoa(pid, pid_str);
+	        char* fifo;
+            fifo = (char*)malloc(sizeof("server_client_fifo_") + sizeof(pid_str));
+            strcpy(fifo, "server_client_fifo_");
+	        strcat(fifo, pid_str);
 
-            // int pid;
-            // if (read(client_server, &pid, sizeof(pid)) == -1){
-            //     perror("Error reading pid\n");
-            //     _exit(1);
-            // }
+            int server_client = open(fifo, O_WRONLY, 0666);
+            if (server_client == -1) {
+                perror("Error opening server_client_fifo\n");
+                _exit(1);
+            }
 
-            // printf("Pid: %d\n", pid);
+            printf("vou enviar o size: %d\n", new_size);
+            if (write(server_client, &new_size, sizeof(new_size)) == -1) {
+                perror("Error sending array size\n");
+                _exit(1);
+            }
 
-            // close(client_server);
+            for (int i = 0; i < new_size; i++) {
+                int str_len = strlen(prog_names[i]);
+                printf("str_len: %d\n", str_len);
+                if (write(server_client, &str_len, sizeof(str_len)) == -1) {
+                    perror("Error sending program name length\n");
+                    _exit(1);
+                }
 
-            // char* pid_str = (char*) malloc (sizeof(char) * numNums(pid));
-            // itoa(pid, pid_str);
-            // char* fifo;
-            // fifo = (char*) malloc(sizeof("server_client_fifo") + sizeof(pid_str));
-            // strcpy(fifo, "server_client_fifo");
-            // strcat(fifo, pid_str);
+                printf("prog_name: %s\n", prog_names[i]);
+                if (write(server_client, prog_names[i], str_len) == -1) {
+                    perror("Error sending program name\n");
+                    _exit(1);
+                }
+            }
 
-            // int server_client = open(fifo, O_WRONLY, 0666);
-            // if (server_client == -1){
-            //     perror("Error opening server_client_fifo\n");
-            //     _exit(1);
-            // }
+            close(server_client);
 
-            // if (write(server_client, &num_processes, sizeof(num_processes)) == -1){
-            //     perror("Error writing num_process\n");
-            //     _exit(1);
-            // }
-
-            // //enviar mensagem ao cliente
-            // char* buffer;
-            // buffer = (char*)malloc(sizeof(char) * sizeof(programsList));
-
-            // strcpy(buffer, programsList[0]);
-            // strcat(buffer, "\n");
-            // for(int i=1; programsList[i]; i++){
-            //     strcat(buffer, programsList[i]);
-            //     strcat(buffer, "\n");
-            // }
-
-            // int buffer_len = strlen(buffer);
-
-            // if(write(server_client, &buffer_len, sizeof(buffer_len)) == -1){
-            //     perror("Error writing string length\n");
-            //     _exit(1);
-            // }
-
-            // if(write(server_client, buffer, buffer_len) == -1){
-            //     perror("Error writing string\n");
-            //     _exit(1);
-            // }
-
-            // close(client_server);
         }
     }
 

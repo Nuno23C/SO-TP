@@ -76,6 +76,27 @@ Program parser(int argc, char** argv) {
     return program;
 }
 
+int* pidsParser(int argc, char** argv) {
+    int pid = 0, numPids = 0;
+    int* pidsList = malloc(sizeof(int) * argc); // aloca um array com o tamanho máximo possível
+
+    char* token = NULL;
+
+    for (int i = 2; argv[i]; i++) {
+        token = strtok(argv[i], " ");
+        while(token != NULL){
+            pid = atoi(token);
+            pidsList[numPids] = pid;
+            numPids += 1;
+            token = strtok(NULL, " ");
+        }
+    }
+
+    pidsList = realloc(pidsList, sizeof(int) * numPids); // redimensiona o array para o tamanho atual
+
+    return pidsList;
+}
+
 
 long sendInitialStatus(int pid, char* program_name) {
     int client_server = open("client_server_fifo", O_WRONLY, 0666);
@@ -116,6 +137,8 @@ long sendInitialStatus(int pid, char* program_name) {
         _exit(1);
     }
 
+    close(client_server);
+
     return timestampI;
 }
 
@@ -147,18 +170,17 @@ long sendFinalStatus(int pid) {
         _exit(1);
     }
 
+    close(client_server);
+
     return timestampF;
+}
+
+void stats_command() {
+
 }
 
 
 int main(int argc, char **argv) {
-
-    if (mkfifo("client_server_fifo", 0666) == -1) {
-        if (errno != EEXIST) {
-            perror("Could not create client_server_fifo\n");
-            _exit(1);
-        }
-    }
 
     if (argc > 1) {
         if (strcmp(argv[1], "execute") == 0) {
@@ -253,6 +275,11 @@ int main(int argc, char **argv) {
             }
 
             int pid = getpid();
+            if (write(client_server, &pid, sizeof(pid)) == -1) {
+                perror("Error sending pid\n");
+                _exit(1);
+            }
+
             char* pid_str = (char*)malloc(sizeof(char) * numNums(pid));
             itoa(pid, pid_str);
 
@@ -261,19 +288,14 @@ int main(int argc, char **argv) {
             strcpy(fifo, "server_client_fifo_");
 	        strcat(fifo, pid_str);
 
+            close(client_server);
+
 	        if (mkfifo(fifo, 0666) == -1) {
                 if (errno != EEXIST) {
                     perror("Could not create client_server_fifo\n");
                     _exit(1);
                 }
             }
-
-            if (write(client_server, &pid, sizeof(pid)) == -1) {
-                perror("Error sending pid\n");
-                _exit(1);
-            }
-
-            close(client_server);
 
             int server_client = open(fifo, O_RDONLY, 0666);
             if (client_server == -1) {
@@ -303,11 +325,259 @@ int main(int argc, char **argv) {
                 }
 
                 printf("%s\n", string);
+                // write(1, string, strlen(string));
             }
 
             close(server_client);
 
             unlink(fifo);
+
+
+
+        } else if (strcmp(argv[1], "stats-time") == 0) {
+            if (argc < 3){
+                perror("Insufficient arguments\n");
+                _exit(1);
+            }
+
+            int* pidsList = (int*)malloc(sizeof(int) * (argc-2));
+            pidsList = pidsParser(argc, argv);
+            int len = argc-2;
+
+            int client_server = open("client_server_fifo", O_WRONLY, 0666);
+            if (client_server == -1) {
+                perror("Error opening client_server_fifo\n");
+                _exit(1);
+            }
+
+            int flag = 4;
+            if (write(client_server, &flag, sizeof(flag)) == -1) {
+                perror("Error sending flag\n");
+                _exit(1);
+            }
+
+            if (write(client_server, &len, sizeof(len)) == -1) {
+                perror("Error sending len\n");
+                _exit(1);
+            }
+
+            for (int i = 0; i < len; i++) {
+                if (write(client_server, &pidsList[i], sizeof(pidsList[i])) == -1) {
+                    perror("Error sending pid\n");
+                    return 0;
+                }
+            }
+
+            int pid = getpid();
+            char* pid_str = (char*)malloc(sizeof(char) * numNums(pid));
+            itoa(pid, pid_str);
+	        char* fifo;
+            fifo = (char*)malloc(sizeof("server_client_fifo_") + sizeof(pid_str));
+            strcpy(fifo, "server_client_fifo_");
+	        strcat(fifo, pid_str);
+
+	        if (mkfifo(fifo, 0666) == -1) {
+                if (errno != EEXIST) {
+                    perror("Could not create server_client_fifo\n");
+                    _exit(1);
+                }
+            }
+
+            if (write(client_server, &pid, sizeof(pid)) == -1) {
+                perror("Error sending pid\n");
+                _exit(1);
+            }
+
+            close(client_server);
+
+            int server_client = open(fifo, O_RDONLY, 0666);
+            if (server_client == -1) {
+                perror("Error opening server_client_fifo\n");
+                _exit(1);
+            }
+
+            int sum;
+            if (read(server_client, &sum, sizeof(sum)) == -1) {
+                perror("Error reading sum\n");
+                _exit(1);
+            }
+
+            char* sum_str = (char*)malloc(sizeof(char) * numNums(sum));;
+            itoa(sum, sum_str);
+
+            char* msg = (char*)malloc(sizeof("Total execution time is ") + sizeof(sum_str) + sizeof(" ms\n"));
+
+            strcpy(msg, "Total execution time is ");
+            strcat(msg, sum_str);
+            strcat(msg, " ms\n");
+
+            write(1, msg, strlen(msg));
+
+            close(server_client);
+
+            unlink(fifo);
+
+        } else if (strcmp(argv[1], "stats-command") == 0) {
+
+            if (argc < 3){
+                perror("Insufficient arguments\n");
+                return 0;
+            }
+
+            int client_server = open("client_server_fifo", O_WRONLY, 0666);
+            if (client_server == -1){
+                perror("Error opening client_server_fifo\n");
+            }
+
+            int flag = 5;
+            if (write(client_server, &flag, sizeof(flag)) == -1){
+                perror("Error sending flag\n");
+                _exit(1);
+            }
+
+            char* prog = (char*)malloc(sizeof(char) * strlen(argv[2]));
+            strcpy(prog, argv[2]);
+            int len = strlen(prog);
+
+            int* pidsList = malloc(sizeof(int) * (argc-3));
+            pidsList = pidsParser(argc, argv);
+
+            int size = argc-3;
+
+            if (write(client_server, &len, sizeof(len)) == -1){
+                perror("Error sending name_len\n");
+                _exit(1);
+            }
+
+            printf("Vai enviar: %s\n", prog);
+            if (write(client_server, &prog, strlen(prog)) == -1){
+                perror("Error sending name_len\n");
+                _exit(1);
+            }
+
+            close(client_server);
+
+            // if (write(client_server, &len, sizeof(len)) == -1){
+            //     perror("Error sending len\n");
+            //     _exit(1);
+            // }
+
+            // for (int i=0; i<len; i++){
+            //     if(write(client_server, &pidsList[i], sizeof(pidsList)) == -1){
+            //         perror("Error sending pid\n");
+            //         _exit(1);
+            //     }
+            // }
+
+            // int pid = getpid();
+            // char* pid_str = (char*)malloc(sizeof(char) * numNums(pid));
+            // itoa(pid, pid_str);
+
+            // char* fifo;
+            // fifo = (char*)malloc(sizeof("server_client_fifo") + sizeof(pid_str));
+            // strcpy(fifo, "server_client_fifo_");
+	        // strcat(fifo, pid_str);
+
+	        // if (mkfifo(fifo, 0666) == -1) {
+            //     if (errno != EEXIST) {
+            //         perror("Could not create server_client_fifo\n");
+            //         _exit(1);
+            //     }
+            // }
+
+            // if (write(client_server, &pid, sizeof(pid)) == -1) {
+            //     perror("Error sending pid\n");
+            //     _exit(1);
+            // }
+
+            // close(client_server);
+
+            // int server_client = open(fifo, O_RDONLY, 0666);
+            // if (client_server == -1) {
+            //     perror("Error opening server_client_fifo\n");
+            //     _exit(1);
+            // }
+
+            // int res;
+            // if (read(server_client, &res, sizeof(res)) == -1) {
+            //     perror("Error reading result");
+            //     _exit(1);
+            // }
+
+            // close(server_client);
+
+            // unlink(fifo);
+
+        } else if (strcmp(argv[1], "stats-uniq") == 0){
+            if (argc < 3) {
+                perror("Insufficient arguments\n");
+                return 0;
+            }
+
+            char client_server = open("client_server_fifo", O_WRONLY, 0666);
+            if (client_server == 1) {
+                perror("Error opening client_server_fifo\n");
+                _exit(1);
+            }
+
+            int flag = 6;
+            if (write(client_server, &flag, sizeof(flag)) == -1) {
+                perror("Error sending flag\n");
+                _exit(1);
+            }
+
+            int* pidsList = (int*)malloc(sizeof(int) * (argc-2));
+            pidsList = pidsParser(argc, argv);
+
+            int size = argc-2;
+
+            if (write(client_server, &size, sizeof(size)) == -1) {
+                perror("Error sending array size\n");
+                _exit(1);
+            }
+
+            for (int i = 0; i < size; i++) {
+                //printf("pid a enviar: %d\n", pidsList[i]);
+                //write(1, &pidsList[i], sizeof(pidsList[i]));
+                printf("%d",pidsList[i]);
+                write(1, &pidsList[i], 4);
+                if(write(client_server, &pidsList[i], sizeof(pidsList[i]) == -1)){
+                    perror("Error sending pid\n");
+                    _exit(1);
+                }
+            }
+
+            close(client_server);
+
+            // int pid = getpid();
+            // char* pid_str = (char *)malloc(sizeof(char) * numNums(pid));
+            // itoa(pid, pid_str);
+            // char* fifo;
+            // fifo = (char *)malloc(sizeof("server_client_fifo") + sizeof(pid_str));
+            // strcpy(fifo, "server_client_fifo");
+            // strcat(fifo, pid_str);
+
+            // if(mkfifo(fifo, 0666) == -1){
+            //     if(errno != EEXIST){
+            //         perror("Could not create server_client_fifo\n");
+            //     }
+            // }
+
+            // if(write(client_server, &pid, sizeof(pid)) == -1){
+            //     perror("Error sending pid\n");
+            //     _exit(1);
+            // }
+
+            // close(client_server);
+
+            // int server_client = open(fifo, O_RDONLY, 0666);
+            // if (server_client == 1){
+            //     perror("Error opening ser_client_fifo\n");
+            //     _exit(1);
+            // }
+
+            // close(server_client);
+            // unlink(fifo);
         }
     }
 

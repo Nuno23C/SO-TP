@@ -288,7 +288,6 @@ int main(int argc, char **argv){
                 if(read(client_server, &pid, sizeof(pid)) == -1){
                     perror("Error reading pid\n");
                 }
-                printf("pid: %d\n", pid);
                 //percorrer a lista de processos terminados
                 for (int i = 0; i < num_processes; i++) {
                     if (list[i].process_pid == pid) {
@@ -332,90 +331,62 @@ int main(int argc, char **argv){
                 perror("Error reading length\n");
                 _exit(1);
             }
-            printf("len: %d\n", len);
 
-            char* prog_name = (char*)malloc(sizeof(char*) * len);
-            if (read(client_server, prog_name, sizeof(char*) * len) == -1) {
+            char* prog_name = (char*)malloc(sizeof(char) * (len + 1));
+            if (read(client_server, prog_name, sizeof(char) * len) == -1) {
                 perror("Error reading name\n");
                 _exit(1);
             }
             prog_name[len] = '\0';
-            printf("prog_name: %s\n", prog_name);
+
+            int size;
+            if (read(client_server, &size, sizeof(size)) == -1) {
+                perror("Error reading array size\n");
+                _exit(1);
+            }
+
+            int sum = 0;
+            int pid;
+            for (int i = 0; i < size; i++) {
+                if (read(client_server, &pid, sizeof(int)) == -1) {
+                    perror("Error reading pid\n");
+                    _exit(1);
+                }
+                for (int j = 0; j < num_processes; j++) {
+                    if ((pid == list[j].process_pid) && (strcmp(list[j].program_name, prog_name) == 0)) {
+                        sum ++;
+                        break;
+                    }
+                }
+            }
+
+            int pid_;
+            if (read(client_server, &pid_, sizeof(pid_)) == -1) {
+                    perror("Error reading pid\n");
+                    _exit(1);
+            }
 
             close(client_server);
 
-            // //recebemos o len
-            // int len;
-            // if (read(client_server, &len, sizeof(len)) == -1) {
-            //     perror("Error reading len\n");
-            //     _exit(1);
-            // }
+	        char* pid_str = (char*)malloc(sizeof(char) * numNums(pid_));
+            itoa(pid_, pid_str);
+	        char* fifo;
+            fifo = (char*)malloc(sizeof("server_client_fifo_") + sizeof(pid_str));
+            strcpy(fifo, "server_client_fifo_");
+	        strcat(fifo, pid_str);
 
-            // int sum = 0; //soma das vezes que o prog é executado
-            // for(int i=0; i<len; i++){
-            //     int pid;
-            //     if (read(client_server, &pid, sizeof(pid)) == -1) {
-            //         perror("Error reading pid\n");
-            //         _exit(1);
-            //     }
-            //     //percorrer a lista de processos terminados
-            //     for(int j=0; j<num_processes; j++){
-            //         if(strcmp(list[j].program_name, programName) == 0){
-            //             sum ++;
-            //         }
-            //     }
-            // }
+            int server_client = open(fifo, O_WRONLY, 0666);
+            if (server_client == -1) {
+                perror("Error opening server_client_fifo\n");
+                _exit(1);
+            }
 
-            // int pid;
-            // if (read(client_server, &pid, sizeof(pid)) == -1) {
-            //         perror("Error reading pid\n");
-            //         _exit(1);
-            // }
+            if (write(server_client, &sum, sizeof(sum)) == -1) {
+                perror("Error sending result");
+                _exit(1);
+            }
 
-            // close(client_server);
-
-	        // char* pid_str = (char*)malloc(sizeof(char) * numNums(pid));
-            // itoa(pid, pid_str);
-
-	        // char* fifo;
-            // fifo = (char*)malloc(sizeof("server_client_fifo_") + sizeof(pid_str));
-            // strcpy(fifo, "server_client_fifo_");
-	        // strcat(fifo, pid_str);
-
-            // int server_client = open(fifo, O_WRONLY, 0666);
-            // if (server_client == -1) {
-            //     perror("Error opening server_client_fifo\n");
-            //     _exit(1);
-            // }
-
-            // if (write(server_client, &sum, sizeof(sum)) == -1) {
-            //     perror("Error sending result");
-            //     _exit(1);
-            // }
-
-            // char* buffer;
-            // char* sum_str = (char*)malloc(sizeof(char) * numNums(sum));
-            // itoa(sum, sum_str);
-            // buffer = (char*)malloc(sizeof(programName) + sizeof(" was executed ") + sizeof(sum_str) + sizeof(" times.\n"));
-
-            // strcpy(buffer, programName);
-            // strcat(buffer, " was executed ");
-            // strcat(buffer, sum_str);
-            // strcat(buffer, " times.\n");
-
-            // int buffer_len = strlen(buffer);
-
-            // if (write(server_client, &buffer_len, sizeof(buffer_len)) == -1) {
-            //     perror("Error writing string length\n");
-            //     _exit(1);
-            // }
-
-            // if (write(server_client, buffer, buffer_len) == -1) {
-            //     perror("Error writing string\n");
-            //     _exit(1);
-            // }
-
-            // close(server_client);
+            close(server_client);
 
         } else if (flag == 6) { // STATS-UNIQ
 

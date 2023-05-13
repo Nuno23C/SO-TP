@@ -436,16 +436,16 @@ int main(int argc, char **argv){
             }
 
             int pid;
-            if (read(client_server, &pid, sizeof(pid)) == -1) {
+            if (read(client_server, &pid, sizeof(pid)) == -1){
                 perror("Error reading pid\n");
                 _exit(1);
             }
 
             close(client_server);
 
-	        char* pid_str = (char*)malloc(sizeof(char) * numNums(pid));
+            char* pid_str = (char*)malloc(sizeof(char) * numNums(pid));
             itoa(pid, pid_str);
-	        char* fifo;
+            char* fifo;
             fifo = (char*)malloc(sizeof("server_client_fifo_") + sizeof(pid_str));
             strcpy(fifo, "server_client_fifo_");
 	        strcat(fifo, pid_str);
@@ -456,7 +456,6 @@ int main(int argc, char **argv){
                 _exit(1);
             }
 
-            printf("vou enviar o size: %d\n", new_size);
             if (write(server_client, &new_size, sizeof(new_size)) == -1) {
                 perror("Error sending array size\n");
                 _exit(1);
@@ -464,13 +463,11 @@ int main(int argc, char **argv){
 
             for (int i = 0; i < new_size; i++) {
                 int str_len = strlen(prog_names[i]);
-                printf("str_len: %d\n", str_len);
                 if (write(server_client, &str_len, sizeof(str_len)) == -1) {
                     perror("Error sending program name length\n");
                     _exit(1);
                 }
 
-                printf("prog_name: %s\n", prog_names[i]);
                 if (write(server_client, prog_names[i], str_len) == -1) {
                     perror("Error sending program name\n");
                     _exit(1);

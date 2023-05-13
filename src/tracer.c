@@ -313,7 +313,7 @@ void stats_uniq(int* pidsList, int size) {
     }
 
     int server_client = open(fifo, O_RDONLY, 0666);
-    if (server_client == -1) {
+    if (client_server == -1) {
         perror("Error opening server_client_fifo\n");
         _exit(1);
     }
@@ -323,22 +323,24 @@ void stats_uniq(int* pidsList, int size) {
         perror("Error reading array size\n");
         _exit(1);
     }
-    printf("recebi o new_size: %d\n", new_size);
 
     for (int i = 0; i < new_size; i++) {
         int str_len;
-        if (write(server_client, &str_len, sizeof(str_len)) == -1) {
+        if (read(server_client, &str_len, sizeof(str_len)) == -1) {
             perror("Error reading program name length\n");
             _exit(1);
         }
 
-        char* string = (char*)malloc(sizeof(char) * str_len);
-        if (write(server_client, string, str_len) == -1) {
+        char* string = (char*)malloc(sizeof(char) * (str_len + 1));
+        if (read(server_client, string, str_len) == -1) {
             perror("Error reading program name\n");
             _exit(1);
         }
+        string[str_len] = '\0';
+        // printf("prog_name: %s\n", string);
 
         write(1, string, strlen(string));
+        write(1, "\n", strlen("\n"));
     }
 
     close(server_client);

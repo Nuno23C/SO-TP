@@ -95,7 +95,7 @@ void remove_duplicate_strings(char** prog_names, int size) {
 
 int main(int argc, char **argv){
 
-    if (mkfifo("client_server_fifo", 0666) == -1) {
+    if (mkfifo("../tmp/client_server_fifo", 0666) == -1) {
         if (errno != EEXIST) {
             perror("Could not create client_server_fifo\n");
             _exit(1);
@@ -104,7 +104,7 @@ int main(int argc, char **argv){
 
     while(1) {
 
-        int client_server = open("client_server_fifo", O_RDONLY, 0666);
+        int client_server = open("../tmp/client_server_fifo", O_RDONLY, 0666);
         if (client_server == -1){
             perror("Could not open the fifo client_server\n");
             _exit(1);
@@ -209,8 +209,8 @@ int main(int argc, char **argv){
 	        char* pid_str = (char*)malloc(sizeof(char) * numNums(pid));
             itoa(pid, pid_str);
 	        char* fifo;
-            fifo = (char*)malloc(sizeof("server_client_fifo_") + sizeof(pid_str));
-            strcpy(fifo, "server_client_fifo_");
+            fifo = (char*)malloc(sizeof("../tmp/server_client_fifo_") + sizeof(pid_str));
+            strcpy(fifo, "../tmp/server_client_fifo_");
 	        strcat(fifo, pid_str);
 
             while (access(fifo, F_OK) == -1) {
@@ -323,9 +323,14 @@ int main(int argc, char **argv){
             char* pid_str = (char*)malloc(sizeof(char) * numNums(pid));
             itoa(pid, pid_str);
             char* fifo;
-            fifo = (char*)malloc(sizeof("server_client_fifo_") + sizeof(pid_str));
-            strcpy(fifo, "server_client_fifo_");
+            fifo = (char*)malloc(sizeof("../tmp/server_client_fifo_") + sizeof(pid_str));
+            strcpy(fifo, "../tmp/server_client_fifo_");
 	        strcat(fifo, pid_str);
+
+            while (access(fifo, F_OK) == -1) {
+                // caso o fifo não tenha sido criado ainda, espera 1 segundo
+                sleep(1);
+            }
 
             int server_client = open(fifo, O_WRONLY, 0666);
             if (server_client == -1) {
@@ -387,9 +392,14 @@ int main(int argc, char **argv){
 	        char* pid_str = (char*)malloc(sizeof(char) * numNums(pid_));
             itoa(pid_, pid_str);
 	        char* fifo;
-            fifo = (char*)malloc(sizeof("server_client_fifo_") + sizeof(pid_str));
-            strcpy(fifo, "server_client_fifo_");
+            fifo = (char*)malloc(sizeof("../tmp/server_client_fifo_") + sizeof(pid_str));
+            strcpy(fifo, "../tmp/server_client_fifo_");
 	        strcat(fifo, pid_str);
+
+            while (access(fifo, F_OK) == -1) {
+                // caso o fifo não tenha sido criado ainda, espera 1 segundo
+                sleep(1);
+            }
 
             int server_client = open(fifo, O_WRONLY, 0666);
             if (server_client == -1) {
@@ -449,9 +459,14 @@ int main(int argc, char **argv){
             char* pid_str = (char*)malloc(sizeof(char) * numNums(pid));
             itoa(pid, pid_str);
             char* fifo;
-            fifo = (char*)malloc(sizeof("server_client_fifo_") + sizeof(pid_str));
-            strcpy(fifo, "server_client_fifo_");
+            fifo = (char*)malloc(sizeof("../tmp/server_client_fifo_") + sizeof(pid_str));
+            strcpy(fifo, "../tmp/server_client_fifo_");
 	        strcat(fifo, pid_str);
+
+            while (access(fifo, F_OK) == -1) {
+                // caso o fifo não tenha sido criado ainda, espera 1 segundo
+                sleep(1);
+            }
 
             int server_client = open(fifo, O_WRONLY, 0666);
             if (server_client == -1) {
@@ -482,7 +497,7 @@ int main(int argc, char **argv){
         }
     }
 
-    unlink("client_server_fifo");
+    unlink("../tmp/client_server_fifo");
 
     return 0;
 }

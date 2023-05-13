@@ -99,7 +99,7 @@ int* pidsParser(int argc, char** argv, int start) {
 
 
 long sendInitialStatus(int pid, char* program_name) {
-    int client_server = open("client_server_fifo", O_WRONLY, 0666);
+    int client_server = open("../tmp/client_server_fifo", O_WRONLY, 0666);
     if (client_server == -1) {
         perror("Error opening client_server_fifo\n");
         _exit(1);
@@ -144,7 +144,7 @@ long sendInitialStatus(int pid, char* program_name) {
 
 
 long sendFinalStatus(int pid) {
-    int client_server = open("client_server_fifo", O_WRONLY, 0666);
+    int client_server = open("../tmp/client_server_fifo", O_WRONLY, 0666);
     if (client_server == -1) {
         perror("Error opening client_server_fifo\n");
         _exit(1);
@@ -177,7 +177,7 @@ long sendFinalStatus(int pid) {
 
 void stats_time(int* pidsList, int size) {
 
-    int client_server = open("client_server_fifo", O_WRONLY, 0666);
+    int client_server = open("../tmp/client_server_fifo", O_WRONLY, 0666);
     if (client_server == -1) {
         perror("Error opening client_server_fifo\n");
         _exit(1);
@@ -205,8 +205,8 @@ void stats_time(int* pidsList, int size) {
     char* pid_str = (char*)malloc(sizeof(char) * numNums(pid));
     itoa(pid, pid_str);
     char* fifo;
-    fifo = (char*)malloc(sizeof("server_client_fifo_") + sizeof(pid_str));
-    strcpy(fifo, "server_client_fifo_");
+    fifo = (char*)malloc(sizeof("../tmp/server_client_fifo_") + sizeof(pid_str));
+    strcpy(fifo, "../tmp/server_client_fifo_");
     strcat(fifo, pid_str);
 
     if (mkfifo(fifo, 0666) == -1) {
@@ -254,7 +254,7 @@ void stats_time(int* pidsList, int size) {
 
 void stats_command(char* prog_name, int* pidsList, int size) {
 
-    int client_server = open("client_server_fifo", O_WRONLY, 0666);
+    int client_server = open("../tmp/client_server_fifo", O_WRONLY, 0666);
     if (client_server == -1){
         perror("Error opening client_server_fifo\n");
     }
@@ -298,8 +298,8 @@ void stats_command(char* prog_name, int* pidsList, int size) {
     char* pid_str = (char*)malloc(sizeof(char) * numNums(pid));
     itoa(pid, pid_str);
     char* fifo;
-    fifo = (char*)malloc(sizeof("server_client_fifo") + sizeof(pid_str));
-    strcpy(fifo, "server_client_fifo_");
+    fifo = (char*)malloc(sizeof("../tmp/server_client_fifo") + sizeof(pid_str));
+    strcpy(fifo, "../tmp/server_client_fifo_");
     strcat(fifo, pid_str);
 
     close(client_server);
@@ -343,7 +343,7 @@ void stats_command(char* prog_name, int* pidsList, int size) {
 
 void stats_uniq(int* pidsList, int size) {
 
-    int client_server = open("client_server_fifo", O_WRONLY, 0666);
+    int client_server = open("../tmp/client_server_fifo", O_WRONLY, 0666);
     if (client_server == -1) {
         perror("Error opening client_server_fifo\n");
         _exit(1);
@@ -378,8 +378,8 @@ void stats_uniq(int* pidsList, int size) {
     char* pid_str = (char*)malloc(sizeof(char) * numNums(pid));
     itoa(pid, pid_str);
     char* fifo;
-    fifo = (char*)malloc(sizeof("server_client_fifo") + sizeof(pid_str));
-    strcpy(fifo, "server_client_fifo_");
+    fifo = (char*)malloc(sizeof("../tmp/server_client_fifo") + sizeof(pid_str));
+    strcpy(fifo, "../tmp/server_client_fifo_");
     strcat(fifo, pid_str);
 
     if (mkfifo(fifo, 0666) == -1) {
@@ -551,7 +551,7 @@ int main(int argc, char **argv) {
                 return 0;
             }
 
-            int client_server = open("client_server_fifo", O_WRONLY, 0666);
+            int client_server = open("../tmp/client_server_fifo", O_WRONLY, 0666);
             if (client_server == -1) {
                 perror("Error opening client_server_fifo\n");
                 _exit(1);
@@ -572,8 +572,8 @@ int main(int argc, char **argv) {
             char* pid_str = (char*)malloc(sizeof(char) * numNums(pid));
             itoa(pid, pid_str);
 	        char* fifo;
-            fifo = (char*)malloc(sizeof("server_client_fifo_") + sizeof(pid_str));
-            strcpy(fifo, "server_client_fifo_");
+            fifo = (char*)malloc(sizeof("../tmp/server_client_fifo_") + sizeof(pid_str));
+            strcpy(fifo, "../tmp/server_client_fifo_");
 	        strcat(fifo, pid_str);
 
             close(client_server);

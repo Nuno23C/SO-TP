@@ -140,8 +140,6 @@ int main(int argc, char **argv){
             }
             process.program_name[program_name_len] = '\0';
 
-            // printf("program_name: %s\n", process.program_name);
-
             if (read(client_server, &process.timestampI, sizeof(process.timestampI)) == -1) {
                 perror("Error reading from tracer\n");
                 _exit(1);
@@ -190,9 +188,31 @@ int main(int argc, char **argv){
             //remove o processo da lista de processos ativos
             remove_process_by_pid(pid);
 
-            printf("pid: %d\n", list[num_processes - 1].process_pid);
-            printf("program_name: %s\n", list[num_processes - 1].program_name);
-            printf("exec_time: %d\n\n", list[num_processes - 1].exec_time);
+            int pid_ = list[num_processes - 1].process_pid;
+            char* pid_str = (char*)malloc(sizeof(char) * numNums(pid_));
+            itoa(pid_, pid_str);
+            char* msg_pid = (char*)malloc(sizeof("pid: ") + sizeof(pid_str) + sizeof("\n"));
+            strcpy(msg_pid, "pid: ");
+            strcat(msg_pid, pid_str);
+            strcat(msg_pid, "\n");
+
+            char* msg_prog = (char*)malloc(sizeof("program_name: ") + sizeof(list[num_processes - 1].program_name) + sizeof("\n"));
+            strcpy(msg_prog, "program_name: ");
+            strcat(msg_prog, list[num_processes - 1].program_name);
+            strcat(msg_prog, "\n");
+
+            int exec_ = list[num_processes - 1].exec_time;
+            char* exec_str = (char*)malloc(sizeof(char) * numNums(exec_));
+            itoa(exec_, exec_str);
+            char* msg_exec = (char*)malloc(sizeof("exec_time: ") + sizeof(exec_str) + sizeof("\n"));
+            strcpy(msg_exec, "exec_time: ");
+            strcat(msg_exec, exec_str);
+            strcat(msg_exec, "\n");
+
+            write(1, msg_pid, strlen(msg_pid));
+            write(1, msg_prog, strlen(msg_prog));
+            write(1, msg_exec, strlen(msg_exec));
+            write(1, "\n", strlen("\n"));
 
             close(client_server);
 
@@ -255,8 +275,6 @@ int main(int argc, char **argv){
 
                 int len = strlen(buffer);
 
-                // printf("Vai enviar: %s\n", buffer);
-
                 if (write(server_client, &len, sizeof(len)) == -1) {
                     perror("Error writing string length\n");
                     _exit(1);
@@ -268,25 +286,6 @@ int main(int argc, char **argv){
                 }
 
             }
-
-            // printf("-----------------------\n");
-            // printf("Na lista de todos os processos:\n");
-            // for (int i = 0; i < num_processes; i++) {
-            //     printf("| i = %d |\n", i);
-            //     printf("pid: %d\n", list[i].process_pid);
-            //     printf("program_name: %s\n", list[i].program_name);
-            //     printf("exec_time: %d\n", list[i].exec_time);
-            // }
-            // printf("-----------------------\n\n");
-            // printf("-----------------------\n");
-            // printf("Na lista de processos ativos:\n");
-            // for (int i = 0; i < active_processes; i++) {
-            //     printf("| i = %d |\n", i);
-            //     printf("pid: %d\n", active_list[i].process_pid);
-            //     printf("program_name: %s\n", active_list[i].program_name);
-            //     printf("exec_time: %d\n", active_list[i].exec_time);
-            // }
-            // printf("-----------------------\n");
 
             close(server_client);
 

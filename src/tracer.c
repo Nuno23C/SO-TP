@@ -611,9 +611,8 @@ int main(int argc, char **argv) {
                     _exit(1);
                 }
                 string[len] = '\0';
-                printf("%s\n", string);
-                // write(1, string, strlen(string));
-                // write(1, "\n", strlen("\n"));
+                write(1, string, strlen(string));
+                write(1, "\n", strlen("\n"));
             }
 
             close(server_client);

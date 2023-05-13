@@ -90,7 +90,7 @@ void remove_duplicate_strings(char** prog_names, int size) {
         }
     }
 
-    prog_names[k] = NULL; // Definindo o final do novo array
+    prog_names[k] = NULL;
 }
 
 int main(int argc, char **argv){
@@ -177,8 +177,6 @@ int main(int argc, char **argv){
 
             active_list[n].exec_time = active_list[n].timestampF - active_list[n].timestampI;
 
-            // printf("ACTIVE | program_name: %s\n", active_list[n].program_name);
-
             int str_len = strlen(active_list[n].program_name);
 
             //adiciona o processo à lista de processos terminados
@@ -214,6 +212,11 @@ int main(int argc, char **argv){
             fifo = (char*)malloc(sizeof("server_client_fifo_") + sizeof(pid_str));
             strcpy(fifo, "server_client_fifo_");
 	        strcat(fifo, pid_str);
+
+            while (access(fifo, F_OK) == -1) {
+                // caso o fifo não tenha sido criado ainda, espera 1 segundo
+                sleep(1);
+            }
 
             int server_client = open(fifo, O_WRONLY, 0666);
             if (server_client == -1) {

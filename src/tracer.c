@@ -461,6 +461,38 @@ void ficheiroTxt(char* pid_str, char* program_name, char* exec_time, char* camin
     close(fd);
 }
 
+char** commandParser (int argc, char** argv){
+    char* token = strtok(argv[3], " | ");
+    char** tokens = NULL;
+    int num_tokens = 0;
+
+    while (token) {
+        tokens = realloc(tokens, (num_tokens + 1) * sizeof(char*));
+        tokens[num_tokens++] = strdup(token);
+        token = strtok(NULL, " | ");
+    }
+
+    return tokens;
+}
+
+int exec_command (char* arg){
+    char *exec_args[10];
+
+    char *string;
+    int exec_ret = 0;
+    int i=0;
+
+    char* command = strdup(arg);
+    while((string = strsep(&command, " ")) != NULL){
+        exec_args[i] = string;
+        i++;
+    }
+
+    exec_args[i] = NULL;
+    exec_ret = execvp(exec_args[0], exec_args);
+
+    return exec_ret;
+}
 
 int main(int argc, char **argv) {
 
@@ -540,9 +572,81 @@ int main(int argc, char **argv) {
                     }
                 }
 
-
             } else if (strcmp(argv[2], "-p") == 0) {
 
+                char** command = commandParser(argc, argv);
+
+                int N=0;
+
+                for(int i=0; command[i]; i++){
+                    N++;
+                }
+
+                int fds[N-1][2];
+                int status[N-1];
+                int pids[N];
+                int res;
+
+                for(int i=0; i<N; i++){
+                    if(i<N-1){
+                        pipe(fds[i]);
+                    }
+                    int pid = fork();
+
+                    if(pid==-1){
+                        perror("Error creating child");
+                        _exit(0);
+                    }
+
+                    if(pid==0){
+                        if(i==0){
+                            close(fds[i][0]);
+                            dup2(fds[i][1], 1);
+                            close(fds[i][1]);
+                            res = exec_command(command[i]);
+                            if(res == -1){
+                                perror("Error");
+                                _exit(res);
+                            }
+                        }else if(i==N-1){
+                            dup2(fds[i-1][0], 0);
+                            close(fds[i-1][0]);
+                            res = exec_command(command[i]);
+
+                            if(res == -1){
+                                perror("Error");
+                                _exit(res);
+                            }
+                        }else{
+                            close(fds[i][0]);
+                            dup2(fds[i-1][0], 0);
+                            close(fds[i-1][0]);
+
+                            dup2(fds[i][1], 1);
+                            close(fds[i][1]);
+                            res = exec_command(command[i]);
+                            if(res == -1){
+                                perror("Error");
+                                _exit(res);
+                            }
+                        }
+                    }else{
+                        if (i==0){
+                            close(fds[i][1]);
+                        }else if(i==N-1){
+                            close(fds[i-1][0]);
+                        }else{
+                            close(fds[i-1][0]);
+                            close(fds[i][1]);
+                        }
+
+                        pids[i] = pid;
+                    }
+                }
+
+                for(int i=0; i<N; i++){
+                    pid_t wait_ret = wait(&status[i]);
+                }
             }
 
         } else if (strcmp(argv[1], "status") == 0) {
